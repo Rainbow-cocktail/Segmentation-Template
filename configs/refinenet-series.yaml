@@ -1,0 +1,27 @@
+model_cfgs:
+  model_name: refinenet
+  model_args:
+    encoder_name: mobilenetv3
+    in_channel_nb: 25
+    classes_nb: 2
+
+dataset_cfgs:
+  data_dir: F:\Data\hsi_road\hsi_road
+  collection: nir
+  classes:
+    - background
+    - road
+
+loss_cfgs:
+  loss_name: ce
+  loss_args:
+    weight: ~
+    reduction: mean
+  loss_activation: softmax
+
+train_cfgs:
+  lr_rate: 0.01
+  lr_scheduler_step: 10
+  lr_scheduler_gamma: 0.1
+  batch_size: 8
+  epochs: 10
