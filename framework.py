@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from datasets import get_dataset
 from segmentations import get_model
-from utils import get_loss, IoUMetric
+from utils import get_loss, IoUMetric, get_optimizer_and_scheduler
 
 
 def infer_activation_from_loss(loss_name):
@@ -18,6 +18,7 @@ def infer_activation_from_loss(loss_name):
         return 'sigmoid'
     else:
         return None
+
 
 class LightningSeg(pl.LightningModule):
 
@@ -77,13 +78,7 @@ class LightningSeg(pl.LightningModule):
         return {"test_iou": iou}
 
     def configure_optimizers(self):
-        # 配置优化器
-        learning_rate = self.train_cfgs['lr_rate']
-        scheduler_step = self.train_cfgs['lr_scheduler_step']
-        scheduler_gamma = self.train_cfgs['lr_scheduler_gamma']
-        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        return get_optimizer_and_scheduler(self, self.train_cfgs)
 
     def train_dataloader(self):
         # 数据加载

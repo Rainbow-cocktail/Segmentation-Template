@@ -22,8 +22,12 @@ loss_cfgs:
     smooth: 1e-6        # used by dice
 
 train_cfgs:
+  optimizer: adam               # 可选项：adam / adamw / sgd
   lr_rate: 0.01
+  lr_scheduler: step             # 可选项：step / multistep / cosine
   lr_scheduler_step: 10
   lr_scheduler_gamma: 0.1
+  lr_scheduler_milestones: [ 30, 60 ]  # 如果用 multistep
+  lr_scheduler_tmax: 50              # 如果用 cosine
   batch_size: 8
   epochs: 10
