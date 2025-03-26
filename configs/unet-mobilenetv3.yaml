@@ -15,9 +15,11 @@ dataset_cfgs:
 loss_cfgs:
   loss_name: ce
   loss_args:
-    weight: ~
-    reduction: mean
-  loss_activation: softmax
+    alpha: 0.75         # used by focal, focal_multi, combo
+    gamma: 2.0         # used by focal, focal_multi
+    reduction: mean    # used by ce, bce, focal, focal_multi
+    weight: ~          # used by ce, bce
+    smooth: 1e-6        # used by dice
 
 train_cfgs:
   lr_rate: 0.01

@@ -83,8 +83,8 @@ class Unet(EncoderDecoder):
 
 
 if __name__=='__main__':
-    test_im = torch.randn([2, 3, 160, 160], dtype=torch.float32).to('cuda:0')
-    model = Unet(encoder_name='resnet50', in_channel_nb=3, classes_nb=5)
+    test_im = torch.randn([4, 25, 160, 160], dtype=torch.float32).to('cuda:0')
+    model = Unet(encoder_name='resnet50', in_channel_nb=25, classes_nb=10)
     model.to('cuda:0')
     output = model(test_im)
     print("model:", model.name)

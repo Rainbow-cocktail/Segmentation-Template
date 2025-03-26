@@ -1,23 +1,27 @@
 import lightning.pytorch as pl
 
-from collections import OrderedDict
-
 import numpy as np
 import imageio
 
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data import DistributedSampler
 
 from datasets import get_dataset
 from segmentations import get_model
 from utils import get_loss, IoUMetric
 
 
+def infer_activation_from_loss(loss_name):
+    if loss_name in ['ce', 'dice', 'combo', 'focal_multi']:
+        return 'softmax'
+    elif loss_name in ['bce', 'focal']:
+        return 'sigmoid'
+    else:
+        return None
+
 class LightningSeg(pl.LightningModule):
 
     def __init__(self, model_params, dataset_params, loss_params, train_params):
-
         super(LightningSeg, self).__init__()
 
         self.model_cfgs = model_params
@@ -30,7 +34,8 @@ class LightningSeg(pl.LightningModule):
         # 加载损失函数
         self.loss = get_loss(self.loss_cfgs['loss_name'], self.loss_cfgs['loss_args'])
         # 计算 IoU 评价指标
-        self.metric = IoUMetric(activation=self.loss_cfgs['loss_activation'])
+        loss_name = self.loss_cfgs['loss_name']
+        self.metric = IoUMetric(activation=infer_activation_from_loss(loss_name))
 
     def forward(self, x):
         return self.model(x)
@@ -78,7 +83,7 @@ class LightningSeg(pl.LightningModule):
         scheduler_gamma = self.train_cfgs['lr_scheduler_gamma']
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
-        return  {"optimizer": optimizer, "lr_scheduler": scheduler}
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     def train_dataloader(self):
         # 数据加载
@@ -108,4 +113,3 @@ class LightningSeg(pl.LightningModule):
         ds = get_dataset('valid', self.dataset_cfgs)
         loader = DataLoader(dataset=ds, batch_size=1, shuffle=False, num_workers=1)
         return loader
-

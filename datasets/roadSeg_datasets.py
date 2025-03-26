@@ -52,7 +52,7 @@ def get_dataset(train_mode, args):
 if __name__ == "__main__":
     import yaml
 
-    with open('configs/nir-fcn-resnet50.yaml', 'r') as f:
+    with open('../configs/nir-fcn-resnet50.yaml', 'r') as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     hsi_road_data = get_dataset('train', cfg['dataset_cfgs'])
     image, mask = hsi_road_data[0]
