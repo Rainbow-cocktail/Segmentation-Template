@@ -3,13 +3,14 @@ import lightning.pytorch as pl
 import numpy as np
 import imageio
 import os
+from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
 
 from datasets import get_dataset
 from segmentations import get_model
-from utils import get_loss, IoUMetric, get_optimizer_and_scheduler, SegmentationMetric
+from utils import get_loss, get_optimizer_and_scheduler, SegmentationMetric, export_classification_data
 
 
 def infer_activation_from_loss(loss_name):
@@ -23,28 +24,24 @@ def infer_activation_from_loss(loss_name):
 
 class LightningSeg(pl.LightningModule):
 
-    def __init__(self, model_params, dataset_params, loss_params, train_params):
+    def __init__(self, model_params, dataset_params, loss_params, train_params, **kwargs):
         super(LightningSeg, self).__init__()
 
         self.model_cfgs = model_params
         self.dataset_cfgs = dataset_params
         self.loss_cfgs = loss_params
         self.train_cfgs = train_params
+        self.plot_cfgs = kwargs.get('plot_cfgs') or {}
 
-        # 加载模型
         self.model = get_model(self.model_cfgs['model_name'], self.model_cfgs['model_args'])
-        # 加载损失函数
         self.loss = get_loss(self.loss_cfgs['loss_name'], self.loss_cfgs['loss_args'])
-
-        # 初始化多指标评价器
         self.seg_metric = SegmentationMetric(num_classes=self.model_cfgs['model_args']['classes_nb'], ignore_index=None)
-
         self.save_cm_interval = self.train_cfgs.get('save_cm_interval', 10)
 
         # 设置输出目录
-        self.output_dir = getattr(self, "output_dir", "outputs")
-        self.results_dir = getattr(self, "results_dir", "results")
-        self.test_dir = getattr(self, "test_dir", "test")
+        self.output_dir = Path(getattr(self, "output_dir", "outputs"))
+        self.results_dir = Path(getattr(self, "results_dir", "results"))
+        self.test_dir = Path(getattr(self, "test_dir", "test"))
 
     def forward(self, x):
         return self.model(x)
@@ -60,37 +57,60 @@ class LightningSeg(pl.LightningModule):
 
     # 验证步骤
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
+        x, y = batch  # y.shape: B,H,W
+        y_hat = self(x)  # B,C,H,W
         loss = self.loss(y_hat, y)
-        # 更新评价指标
         self.seg_metric.update(y_hat.detach(), y)
-
         self.log("val_loss", loss, prog_bar=True, on_epoch=True)
-        return loss
 
+        return loss
 
     def on_validation_epoch_end(self):
         scores = self.seg_metric.get_scores()
 
+        # 基础指标记录
         self.log("val_mIoU", scores["Mean_IoU"])
         self.log("val_PixelAcc", scores["Pixel_Acc"])
+        self.log("val_Precision", scores["Precision"])
+        self.log("val_Recall", scores["Recall"])
+        self.log("val_F1", scores["F1"])
 
         class_names = [str(i) for i in range(self.seg_metric.num_classes)]
+        save_dir = self.results_dir
+        os.makedirs(save_dir, exist_ok=True)
 
-        save_path = self.results_dir / f"confusion_matrix_epoch{self.current_epoch}.png"
+        epoch = self.current_epoch
+        logger = self.logger.experiment if hasattr(self.logger, "experiment") else None
 
-        # 保存混淆矩阵图
-        if (self.current_epoch + 1) % self.save_cm_interval == 0:
-            print(f"[INFO] 保存混淆矩阵图：Epoch {self.current_epoch}")
-            self.seg_metric.plot_confusion_matrix(class_names, save_path=save_path)
+        if ((epoch + 1) % self.save_cm_interval == 0) or (epoch + 1) == self.trainer.max_epochs:
+            cm_path = save_dir / f"confusion_matrix_epoch{epoch}.png"
+            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_path)
+            if logger:
+                self.seg_metric.plot_confusion_matrix(class_names, writer=logger, global_step=epoch)
 
-        # 写入 TensorBoard（如果 logger 支持）
-        if hasattr(self.logger, "experiment"):
-            self.seg_metric.plot_confusion_matrix(class_names, writer=self.logger.experiment,
-                                                  global_step=self.current_epoch)
-            self.seg_metric.plot_precision_recall_f1(
-                class_names, writer=self.logger.experiment, global_step=self.current_epoch
+            # 写入 training_log.txt
+            log_file = save_dir / "training_log.txt"
+            train_loss = self.trainer.callback_metrics.get('train_loss', None)
+            val_loss = self.trainer.callback_metrics.get('val_loss', None)
+            with open(log_file, "a") as f:
+                f.write(f"\n[Epoch {epoch}] Evaluation Metrics\n")
+                f.write(
+                    f"Train Loss      : {train_loss:.4f}\n" if train_loss is not None else "Train Loss      : N/A\n")
+                f.write(f"Val Loss        : {val_loss:.4f}\n" if val_loss is not None else "Val Loss        : N/A\n")
+                f.write(f"Pixel Accuracy  : {scores['Pixel_Acc']:.4f}\n")
+                f.write(f"Mean IoU        : {scores['Mean_IoU']:.4f}\n")
+                f.write(f"Precision (avg) : {scores['Precision']:.4f}\n")
+                f.write(f"Recall    (avg) : {scores['Recall']:.4f}\n")
+                f.write(f"F1        (avg) : {scores['F1']:.4f}\n")
+                f.write("Class-wise IoU  : " + ", ".join([f"{v:.4f}" for v in scores["IoU_per_class"]]) + "\n")
+
+        if ((epoch + 1) == self.trainer.max_epochs) and self.plot_cfgs.get("save_last_epoch_result", False):
+            export_classification_data(
+                outputs=self.seg_metric.outputs,
+                targets=self.seg_metric.targets,
+                save_path=self.results_dir / f"classification_data_epoch{epoch + 1}.npz",
+                num_classes=self.seg_metric.num_classes,
+                max_points=100000  # 可选限制：最多保留多少个像素，避免显存爆炸
             )
 
         self.seg_metric.reset()
@@ -123,8 +143,7 @@ class LightningSeg(pl.LightningModule):
         if hasattr(self.logger, "experiment"):
             self.seg_metric.plot_confusion_matrix(class_names, writer=self.logger.experiment,
                                                   global_step=self.current_epoch)
-            self.seg_metric.plot_precision_recall_f1(class_names, writer=self.logger.experiment,
-                                                     global_step=self.current_epoch)
+
 
         self.seg_metric.reset()
 

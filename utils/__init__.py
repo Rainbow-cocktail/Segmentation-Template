@@ -1,4 +1,5 @@
 from .losses import get_loss
-from .metrics import IoUMetric
 from .metrics_ext import SegmentationMetric
 from .optimizers import get_optimizer_and_scheduler
+from .classification_export import export_classification_data
+from .plot_classification_metrics import plot_multiclass_metrics

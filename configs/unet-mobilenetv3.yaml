@@ -1,4 +1,4 @@
-SEED: 2334
+SEED: 0
 
 model_cfgs:
   model_name: unet
@@ -31,6 +31,10 @@ train_cfgs:
   lr_scheduler_gamma: 0.1
   lr_scheduler_milestones: [ 30, 60 ]  # 如果用 multistep
   lr_scheduler_tmax: 50              # 如果用 cosine
-  batch_size: 8
+  batch_size: 4
   epochs: 7
   save_cm_interval: 5
+
+plot_cfgs:
+  save_last_epoch_result: True
+  plot_classification_curve: True

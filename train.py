@@ -1,4 +1,5 @@
 import torch
+from pandas.plotting import plot_params
 
 torch.set_float32_matmul_precision('high')
 from argparse import ArgumentParser
@@ -13,6 +14,8 @@ from framework import LightningSeg
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
+
+from utils import plot_multiclass_metrics
 
 
 def main(options):
@@ -29,7 +32,8 @@ def main(options):
     model = LightningSeg(model_params=config['model_cfgs'],
                          dataset_params=config['dataset_cfgs'],
                          loss_params=config['loss_cfgs'],
-                         train_params=config['train_cfgs'])
+                         train_params=config['train_cfgs'],
+                         plot_cfgs=config['plot_cfgs'])
 
 
     # 定义实验版本名称
@@ -84,6 +88,25 @@ def main(options):
     )
 
     trainer.fit(model)
+
+    print("==Training finished.🍾 Take a break and have a cup of coffee. ☕️==")
+
+
+    if config["plot_cfgs"]["save_last_epoch_result"] and config["plot_cfgs"]["plot_classification_curve"]:
+        import gc
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        npz_path = os.path.join(output_dir, "results", f"classification_data_epoch{config['train_cfgs']['epochs']}.npz")
+        data = np.load(npz_path)
+        y_true = data["y_true"]
+        y_pred = data["y_pred"]
+        class_names = config["dataset_cfgs"]["classes"]
+        plot_multiclass_metrics(y_true,
+                                y_pred,
+                                class_names=class_names,
+                                exclude_class_0=True,
+                                save_dir=os.path.join(output_dir, "results"))
 
 
 if __name__ == '__main__':
