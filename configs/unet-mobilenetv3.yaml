@@ -8,6 +8,7 @@ model_cfgs:
     classes_nb: 2
 
 dataset_cfgs:
+  name: hsi_road
   data_dir: F:\Data\hsi_road\hsi_road
   collection: nir
   classes:

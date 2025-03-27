@@ -19,7 +19,7 @@ from torch.utils.data import Dataset
 
 class HsiRoadDataset(Dataset):
 
-    def __init__(self, data_dir, collection, classes=('background', 'road'), mode='train'):
+    def __init__(self, data_dir, collection, classes=('background', 'road'), mode='train', **kwargs):
         # 0 is background
         self.data_dir = data_dir
         self.collection = collection.lower()
@@ -44,20 +44,8 @@ class HsiRoadDataset(Dataset):
         return len(self.name_list)
 
 
-def get_dataset(train_mode, args):
-    args.update({'mode': train_mode})
-    return HsiRoadDataset(**args)
 
 
-if __name__ == "__main__":
-    import yaml
-
-    with open('../configs/nir-fcn-resnet50.yaml', 'r') as f:
-        cfg = yaml.load(f, Loader=yaml.FullLoader)
-    hsi_road_data = get_dataset('train', cfg['dataset_cfgs'])
-    image, mask = hsi_road_data[0]
-    print(image.shape, mask.shape)  # torch.Size([25, 192, 384]) torch.Size([192, 384])
-    print(np.unique(mask))  # [0 1]
 
 
 
