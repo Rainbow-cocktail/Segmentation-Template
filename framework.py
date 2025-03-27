@@ -43,6 +43,8 @@ class LightningSeg(pl.LightningModule):
         # 初始化多指标评价器
         self.seg_metric = SegmentationMetric(num_classes=self.model_cfgs['model_args']['classes_nb'], ignore_index=None)
 
+        self.save_cm_interval = self.train_cfgs.get('save_cm_interval', 10)
+
     def forward(self, x):
         return self.model(x)
 
@@ -60,11 +62,13 @@ class LightningSeg(pl.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = self.loss(y_hat, y)
-        iou = self.metric(y_hat, y)[1]  # 1代表第一类的IoU
         # 更新评价指标
         self.seg_metric.update(y_hat.detach(), y)
 
         self.log("val_loss", loss, prog_bar=True, on_epoch=True)
+
+        # FIXME:老代码，这里是计算的是第二类别的iou，因为只有两类，所以拿出[1]就是道路的iou,单个batch计算
+        iou = self.metric(y_hat, y)[1]  # 1代表第一类的IoU
         self.log("val_iou", iou, prog_bar=True, on_epoch=True)
         return loss
 
@@ -80,7 +84,8 @@ class LightningSeg(pl.LightningModule):
         save_path = f"results/confusion_matrix_epoch{self.current_epoch}.png"
 
         # 保存混淆矩阵图
-        if self.current_epoch % 10 == 0:
+        if (self.current_epoch + 1) % self.save_cm_interval == 0:
+            print(f"[INFO] 保存混淆矩阵图：Epoch {self.current_epoch}")
             self.seg_metric.plot_confusion_matrix(class_names, save_path=save_path)
 
         # 写入 TensorBoard（如果 logger 支持）

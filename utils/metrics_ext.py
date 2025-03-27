@@ -10,7 +10,7 @@ class SegmentationMetric:
     def __init__(self, num_classes, ignore_index=None):
         self.num_classes = num_classes
         self.ignore_index = ignore_index
-        self.confusion_matrix = torch.zeros((num_classes, num_classes), dtype=torch.int64)
+        self.confusion_matrix = None
 
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         """
@@ -34,6 +34,12 @@ class SegmentationMetric:
             self.num_classes * targets + preds,
             minlength=self.num_classes ** 2
         ).reshape(self.num_classes, self.num_classes)
+
+        if self.confusion_matrix is None:
+            self.confusion_matrix = torch.zeros(
+                (self.num_classes, self.num_classes), dtype=torch.int64
+            ).type_as(cm)  # .to(cm.device) is also ok
+
         self.confusion_matrix += cm
 
     def get_scores(self):
@@ -64,7 +70,8 @@ class SegmentationMetric:
     def reset(self):
         self.confusion_matrix.zero_()
 
-    def plot_confusion_matrix(self, class_names, save_path="confusion_matrix.png", writer: SummaryWriter = None, global_step=None):
+    def plot_confusion_matrix(self, class_names, save_path=None, writer: SummaryWriter = None,
+                              global_step=None):
         cm = self.confusion_matrix.cpu().numpy()
         fig, ax = plt.subplots(figsize=(8, 6))
         im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
@@ -88,7 +95,8 @@ class SegmentationMetric:
                         color="white" if cm[i, j] > thresh else "black")
 
         fig.tight_layout()
-        plt.savefig(save_path)
+        if save_path:
+            plt.savefig(save_path)
         if writer and global_step is not None:
             writer.add_figure("Confusion_Matrix", fig, global_step=global_step)
         plt.close(fig)

@@ -9,6 +9,7 @@ import yaml
 from framework import LightningSeg
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.loggers import TensorBoardLogger, CSVLogger
 
 
 def main(options):
@@ -22,14 +23,13 @@ def main(options):
                          loss_params=config['loss_cfgs'],
                          train_params=config['train_cfgs'])
 
-    # 定义模型检查点回调（保留 v_iou 指标）
-    # 每个 epoch 结束后，检查 v_iou，如果是历史最佳，就自动保存模型
 
+    # 定义模型检查点回调（保留 val_mIoU 指标最优模型）
     # 保存模型的设置
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints/",
-        filename=f"{model.model.name}--{{epoch:02d}}-{{val_iou:.4f}}",
-        monitor="val_iou",
+        filename=f"{model.model.name}--{{epoch:02d}}-{{val_mIoU:.4f}}",
+        monitor="val_mIoU",
         save_top_k=1,
         mode="max",
     )
@@ -40,6 +40,10 @@ def main(options):
         mode="min"
     )
 
+    # 添加 Logger：TensorBoard + CSV
+    logger_tb = TensorBoardLogger(save_dir="logs", name=model.model.name)
+    logger_csv = CSVLogger(save_dir="logs", name=model.model.name)
+
     device = "gpu" if torch.cuda.is_available() else "cpu"
 
     trainer = pl.Trainer(
@@ -47,7 +51,8 @@ def main(options):
         accelerator=device,
         max_epochs=config['train_cfgs']['epochs'],
         log_every_n_steps=10,
-        callbacks=[checkpoint_callback, early_stopping]
+        callbacks=[checkpoint_callback, early_stopping],
+        logger=[logger_tb, logger_csv]
     )
 
     trainer.fit(model)

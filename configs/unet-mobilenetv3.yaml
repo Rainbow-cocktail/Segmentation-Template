@@ -30,4 +30,5 @@ train_cfgs:
   lr_scheduler_milestones: [ 30, 60 ]  # 如果用 multistep
   lr_scheduler_tmax: 50              # 如果用 cosine
   batch_size: 8
-  epochs: 10
+  epochs: 7
+  save_cm_interval: 5
