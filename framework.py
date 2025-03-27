@@ -36,14 +36,15 @@ class LightningSeg(pl.LightningModule):
         # 加载损失函数
         self.loss = get_loss(self.loss_cfgs['loss_name'], self.loss_cfgs['loss_args'])
 
-        # 计算类别IoU 评价指标
-        loss_name = self.loss_cfgs['loss_name']
-        # self.metric = IoUMetric(activation=infer_activation_from_loss(loss_name))
-
         # 初始化多指标评价器
         self.seg_metric = SegmentationMetric(num_classes=self.model_cfgs['model_args']['classes_nb'], ignore_index=None)
 
         self.save_cm_interval = self.train_cfgs.get('save_cm_interval', 10)
+
+        # 设置输出目录
+        self.output_dir = getattr(self, "output_dir", "outputs")
+        self.results_dir = getattr(self, "results_dir", "results")
+        self.test_dir = getattr(self, "test_dir", "test")
 
     def forward(self, x):
         return self.model(x)
@@ -76,8 +77,8 @@ class LightningSeg(pl.LightningModule):
         self.log("val_PixelAcc", scores["Pixel_Acc"])
 
         class_names = [str(i) for i in range(self.seg_metric.num_classes)]
-        os.makedirs("results", exist_ok=True)
-        save_path = f"results/confusion_matrix_epoch{self.current_epoch}.png"
+
+        save_path = self.results_dir / f"confusion_matrix_epoch{self.current_epoch}.png"
 
         # 保存混淆矩阵图
         if (self.current_epoch + 1) % self.save_cm_interval == 0:
@@ -105,7 +106,7 @@ class LightningSeg(pl.LightningModule):
         z = np.zeros_like(y, dtype=y.dtype)
         im = np.stack([y, y_hat, z], axis=-1)
 
-        imageio.imwrite(f'test/{batch_idx}.png', im)
+        imageio.imwrite(self.test_dir / f"{batch_idx}.png", im)
 
         return {}
 
@@ -116,13 +117,14 @@ class LightningSeg(pl.LightningModule):
         self.log("test_PixelAcc", scores["Pixel_Acc"])
 
         class_names = [str(i) for i in range(self.seg_metric.num_classes)]
-        os.makedirs("results", exist_ok=True)
-        save_path = f"results/test_confusion_matrix.png"
+        save_path = self.results_dir / "test_confusion_matrix.png"
         self.seg_metric.plot_confusion_matrix(class_names, save_path=save_path)
 
         if hasattr(self.logger, "experiment"):
             self.seg_metric.plot_confusion_matrix(class_names, writer=self.logger.experiment,
                                                   global_step=self.current_epoch)
+            self.seg_metric.plot_precision_recall_f1(class_names, writer=self.logger.experiment,
+                                                     global_step=self.current_epoch)
 
         self.seg_metric.reset()
 

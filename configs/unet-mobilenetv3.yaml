@@ -1,3 +1,5 @@
+SEED: 2334
+
 model_cfgs:
   model_name: unet
   model_args:
