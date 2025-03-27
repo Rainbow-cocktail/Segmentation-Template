@@ -101,6 +101,31 @@ class SegmentationMetric:
             writer.add_figure("Confusion_Matrix", fig, global_step=global_step)
         plt.close(fig)
 
+    def plot_precision_recall_f1(self, class_names, writer: SummaryWriter, global_step: int):
+        scores = self.get_scores()
+        precision = scores["Precision"]
+        recall = scores["Recall"]
+        f1 = scores["F1"]
+
+        x = np.arange(len(class_names))
+        width = 0.25
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.bar(x - width, precision, width, label="Precision")
+        ax.bar(x, recall, width, label="Recall")
+        ax.bar(x + width, f1, width, label="F1")
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(class_names, rotation=30)
+        ax.set_ylim(0, 1.0)
+        ax.set_ylabel("Score")
+        ax.set_title("Precision / Recall / F1 per class")
+        ax.legend()
+
+        fig.tight_layout()
+        writer.add_figure("Precision_Recall_F1", fig, global_step=global_step)
+        plt.close(fig)
+
 
 if __name__ == '__main__':
     # 创建一个 metric 实例（10 类 + 背景 = 11 类）

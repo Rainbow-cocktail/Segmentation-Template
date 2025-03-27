@@ -178,6 +178,7 @@ class ComboLoss(torch.nn.Module):
 
 
 def get_loss(loss_name, loss_args):
+    print(f"[LOSS] 使用 {loss_name} 损失函数")
     if loss_name == 'ce':
         return CrossEntropy2D(
             weight=loss_args.get('weight', None),

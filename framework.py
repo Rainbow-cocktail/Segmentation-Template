@@ -38,7 +38,7 @@ class LightningSeg(pl.LightningModule):
 
         # 计算类别IoU 评价指标
         loss_name = self.loss_cfgs['loss_name']
-        self.metric = IoUMetric(activation=infer_activation_from_loss(loss_name))
+        # self.metric = IoUMetric(activation=infer_activation_from_loss(loss_name))
 
         # 初始化多指标评价器
         self.seg_metric = SegmentationMetric(num_classes=self.model_cfgs['model_args']['classes_nb'], ignore_index=None)
@@ -66,10 +66,6 @@ class LightningSeg(pl.LightningModule):
         self.seg_metric.update(y_hat.detach(), y)
 
         self.log("val_loss", loss, prog_bar=True, on_epoch=True)
-
-        # FIXME:老代码，这里是计算的是第二类别的iou，因为只有两类，所以拿出[1]就是道路的iou,单个batch计算
-        iou = self.metric(y_hat, y)[1]  # 1代表第一类的IoU
-        self.log("val_iou", iou, prog_bar=True, on_epoch=True)
         return loss
 
 
@@ -92,6 +88,9 @@ class LightningSeg(pl.LightningModule):
         if hasattr(self.logger, "experiment"):
             self.seg_metric.plot_confusion_matrix(class_names, writer=self.logger.experiment,
                                                   global_step=self.current_epoch)
+            self.seg_metric.plot_precision_recall_f1(
+                class_names, writer=self.logger.experiment, global_step=self.current_epoch
+            )
 
         self.seg_metric.reset()
 
