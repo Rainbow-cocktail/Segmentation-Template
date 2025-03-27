@@ -110,7 +110,7 @@ class LightningSeg(pl.LightningModule):
                 targets=self.seg_metric.targets,
                 save_path=self.results_dir / f"classification_data_epoch{epoch + 1}.npz",
                 num_classes=self.seg_metric.num_classes,
-                max_points=100000  # 可选限制：最多保留多少个像素，避免显存爆炸
+                max_points=self.plot_cfgs.get("max_points", 10000)  # 可选限制：最多保留多少个像素，避免显存爆炸
             )
 
         self.seg_metric.reset()

@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from pathlib import Path
 
+
 def export_classification_data(outputs, targets, save_path: Path, num_classes: int, max_points: int = None):
     """
     从累计的 outputs 和 targets 中提取概率和标签，保存为 .npz 文件。
@@ -18,12 +19,12 @@ def export_classification_data(outputs, targets, save_path: Path, num_classes: i
         - y_true: [N]，所有像素标签
         - y_pred: [N, C]，每个像素的 softmax 概率
     """
-    y_pred_all = torch.cat(outputs, dim=0)        # [B_total, C, H, W]
-    y_true_all = torch.cat(targets, dim=0)        # [B_total, H, W]
+    y_pred_all = torch.cat(outputs, dim=0)  # [B_total, C, H, W]
+    y_true_all = torch.cat(targets, dim=0)  # [B_total, H, W]
 
     # 展平
     y_pred_flat = y_pred_all.permute(0, 2, 3, 1).reshape(-1, num_classes)  # [N, C]
-    y_true_flat = y_true_all.reshape(-1)                                   # [N]
+    y_true_flat = y_true_all.reshape(-1)  # [N]
 
     if max_points is not None and y_pred_flat.shape[0] > max_points:
         # 只保留前 max_points 个

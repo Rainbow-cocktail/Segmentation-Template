@@ -1,12 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 plt.rcParams['font.family'] = 'SimHei'
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score, f1_score
 import os
 
-def plot_multiclass_metrics(y_true, y_pred, class_names=None, exclude_class_0=True,save_dir=None):
+
+def plot_multiclass_metrics(y_true, y_pred, class_names=None, exclude_class_0=True, save_dir=None):
     """
     绘制多分类任务中的 ROC、PR、F1 vs Threshold 三类曲线。
+    对于每个类别均需要绘制 ROC 曲线、PR 曲线、F1 vs Threshold 曲线。
+    对于背景类（通常为第 0 类）不绘制 ROC 曲线，也可以绘制。
+    这个函数可以单独调用，也可以在训练完成后调用。
 
     参数：
     - y_true: [N]，每个像素的真实标签（整数）
@@ -57,7 +62,6 @@ def plot_multiclass_metrics(y_true, y_pred, class_names=None, exclude_class_0=Tr
         print(f"[Saved] ROC curve to {roc_path}")
     else:
         plt.show()
-
 
     # ---------- PR 曲线 ----------
     plt.figure(figsize=(6, 5))

@@ -38,3 +38,4 @@ train_cfgs:
 plot_cfgs:
   save_last_epoch_result: True
   plot_classification_curve: True
+  max_points: 100000  # 最多保存的像素点数
