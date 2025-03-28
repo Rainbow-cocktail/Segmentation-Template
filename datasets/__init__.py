@@ -8,6 +8,3 @@ def get_dataset(train_mode, args):
         return HsiRoadDataset(**args)
     else:
         raise NotImplementedError(f"不存在{args['name']}数据集")
-
-
-

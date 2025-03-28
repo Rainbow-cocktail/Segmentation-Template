@@ -1,0 +1,11 @@
+torch==2.6.0+cu126
+numpy==1.26.3
+matplotlib==3.9.4
+scikit-learn==1.6.1
+tifffile==2024.8.30
+pillow==11.0.0
+PyYAML==6.0.2
+lightning==2.5.0.post0
+pandas==2.2.3
+imageio==2.37.0
+torchvision==0.21.0+cu126
