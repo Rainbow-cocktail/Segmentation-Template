@@ -40,6 +40,9 @@ def main(options):
     version_name = datetime.now().strftime("run_%Y%m%d-%H%M%S")
     model_name = model.model.name
 
+    # 生成outputs目录
+    os.makedirs("outputs", exist_ok=True)
+
     # 输出目录
     output_dir = Path("outputs") / model_name / version_name
     log_dir = output_dir / "logs"

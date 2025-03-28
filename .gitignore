@@ -1,0 +1,4 @@
+# Ignore the outputs folder
+outputs/
+.idea/
+__pycache__/
