@@ -1,6 +1,7 @@
 SEED: 0
 
 model_cfgs:
+  ckpt_path: ~  # 断点续训时的ckpt路径，~表示从0开始训练
   model_name: unet
   model_args:
     encoder_name: mobilenetv3

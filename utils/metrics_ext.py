@@ -93,8 +93,12 @@ class SegmentationMetric:
         self.targets.clear()
 
     def plot_confusion_matrix(self, class_names, save_path=None, writer: SummaryWriter = None,
-                              global_step=None):
+                              global_step=None, normalize=False):
         cm = self.confusion_matrix.cpu().numpy()
+
+        if normalize:
+            cm = cm.astype('float') / (cm.sum(axis=1, keepdims=True) + 1e-8)
+
         fig, ax = plt.subplots(figsize=(8, 6))
         im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
         plt.colorbar(im, ax=ax)
@@ -122,5 +126,6 @@ class SegmentationMetric:
         if writer and global_step is not None:
             writer.add_figure("Confusion_Matrix", fig, global_step=global_step)
         plt.close(fig)
+
 
 

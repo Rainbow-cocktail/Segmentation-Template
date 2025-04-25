@@ -84,7 +84,9 @@ class LightningSeg(pl.LightningModule):
 
         if ((epoch + 1) % self.save_cm_interval == 0) or (epoch + 1) == self.trainer.max_epochs:
             cm_path = save_dir / f"confusion_matrix_epoch{epoch}.png"
-            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_path)
+            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_path) # 全部类别的混淆矩阵（像素点数）
+            cm_norm_path = save_dir / f"confusion_matrix_norm_epoch{epoch}.png"
+            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_norm_path, normalize=True) # 正规化后的混淆矩阵（0~1）
             if logger:
                 self.seg_metric.plot_confusion_matrix(class_names, writer=logger, global_step=epoch)
 

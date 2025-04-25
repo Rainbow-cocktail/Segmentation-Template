@@ -60,7 +60,7 @@ def main(options):
     # 复制配置文件以保留实验元信息
     shutil.copy(options.config, output_dir / "config.yaml")
 
-    # 定义模型检查点回调（保留 val_mIoU 指标最优模型）
+    # 定义模型检查点回调（保留 val_mIoU 指标最优模型）在训练过程中生成可以被续训的文件
     checkpoint_callback = ModelCheckpoint(
         dirpath=ckpt_dir,
         filename=f"{model_name}--{{epoch:02d}}-{{val_mIoU:.4f}}",
@@ -90,7 +90,14 @@ def main(options):
         logger=[logger_tb, logger_csv]
     )
 
-    trainer.fit(model)
+    ckpt_path = config['model_cfgs'].get('ckpt_path', None)
+    if ckpt_path:
+        print(f"==Loading checkpoint from {ckpt_path}==")
+        trainer.fit(model, ckpt_path=ckpt_path)
+    else:
+        print("==Starting training from scratch==")
+        trainer.fit(model)
+
 
     print("==Training finished.🍾 Take a break and have a cup of coffee. ☕️==")
 
