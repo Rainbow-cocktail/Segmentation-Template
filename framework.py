@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from datasets import get_dataset
 from segmentations import get_model
-from utils import get_loss, get_optimizer_and_scheduler, SegmentationMetric, export_classification_data
+from utils import get_loss, get_optimizer_and_scheduler, SegmentationMetric, export_classification_data, plot_loss_curve
 
 
 def infer_activation_from_loss(loss_name):
@@ -42,6 +42,9 @@ class LightningSeg(pl.LightningModule):
         self.output_dir = Path(getattr(self, "output_dir", "outputs"))
         self.results_dir = Path(getattr(self, "results_dir", "results"))
         self.test_dir = Path(getattr(self, "test_dir", "test"))
+
+        self.train_loss_per_epoch = []
+        self.val_loss_per_epoch = []
 
     def forward(self, x):
         return self.model(x)
@@ -79,14 +82,15 @@ class LightningSeg(pl.LightningModule):
         save_dir = self.results_dir
         os.makedirs(save_dir, exist_ok=True)
 
-        epoch = self.current_epoch
+        epoch = self.current_epoch  # 0 ~ max_epoch - 1
         logger = self.logger.experiment if hasattr(self.logger, "experiment") else None
 
-        if ((epoch + 1) % self.save_cm_interval == 0) or (epoch + 1) == self.trainer.max_epochs:
+        if ((epoch) % self.save_cm_interval == 0) or (epoch + 1) == self.trainer.max_epochs:
             cm_path = save_dir / f"confusion_matrix_epoch{epoch}.png"
-            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_path) # 全部类别的混淆矩阵（像素点数）
+            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_path)
+            # 归一化CM
             cm_norm_path = save_dir / f"confusion_matrix_norm_epoch{epoch}.png"
-            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_norm_path, normalize=True) # 正规化后的混淆矩阵（0~1）
+            self.seg_metric.plot_confusion_matrix(class_names, save_path=cm_norm_path, normalize=True)
             if logger:
                 self.seg_metric.plot_confusion_matrix(class_names, writer=logger, global_step=epoch)
 
@@ -106,7 +110,17 @@ class LightningSeg(pl.LightningModule):
                 f.write(f"F1        (avg) : {scores['F1']:.4f}\n")
                 f.write("Class-wise IoU  : " + ", ".join([f"{v:.4f}" for v in scores["IoU_per_class"]]) + "\n")
 
-        if ((epoch + 1) == self.trainer.max_epochs) and self.plot_cfgs.get("save_last_epoch_result", False):
+        train_loss = self.trainer.callback_metrics.get('train_loss', None)
+        val_loss = self.trainer.callback_metrics.get('val_loss', None)
+        if train_loss is not None:
+            self.train_loss_per_epoch.append(train_loss.cpu().item())
+        if val_loss is not None:
+            self.val_loss_per_epoch.append(val_loss.cpu().item())
+
+        # 保存用于绘制ROC、PR、F1 vs Threshold曲线的数据
+        if ((epoch + 1) == self.trainer.max_epochs) \
+                and self.plot_cfgs.get("save_last_epoch_result", False) \
+                and self.plot_cfgs.get("plot_classification_curve", False):
             export_classification_data(
                 outputs=self.seg_metric.outputs,
                 targets=self.seg_metric.targets,
@@ -146,8 +160,14 @@ class LightningSeg(pl.LightningModule):
             self.seg_metric.plot_confusion_matrix(class_names, writer=self.logger.experiment,
                                                   global_step=self.current_epoch)
 
-
         self.seg_metric.reset()
+
+    def on_train_end(self):
+        plot_loss_curve(
+            train_loss_list=self.train_loss_per_epoch,
+            val_loss_list=self.val_loss_per_epoch,
+            save_path=self.results_dir / "loss_curve.png"
+        )
 
     def configure_optimizers(self):
         return get_optimizer_and_scheduler(self, self.train_cfgs)

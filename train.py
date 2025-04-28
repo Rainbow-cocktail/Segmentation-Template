@@ -60,7 +60,7 @@ def main(options):
     # 复制配置文件以保留实验元信息
     shutil.copy(options.config, output_dir / "config.yaml")
 
-    # 定义模型检查点回调（保留 val_mIoU 指标最优模型）在训练过程中生成可以被续训的文件
+    # 定义模型检查点回调（保留 val_mIoU 指标最优模型）
     checkpoint_callback = ModelCheckpoint(
         dirpath=ckpt_dir,
         filename=f"{model_name}--{{epoch:02d}}-{{val_mIoU:.4f}}",
@@ -69,11 +69,19 @@ def main(options):
         mode="max",
     )
 
-    early_stopping = EarlyStopping(
-        monitor="val_loss",
-        patience=10,
-        mode="min"
-    )
+    callbacks = [checkpoint_callback]
+    early_cfg = config['train_cfgs']['early_stopping']
+    # 定义早停
+    if early_cfg.get("enabled", False):
+        early_stopping = EarlyStopping(
+            monitor=early_cfg.get("monitor", "val_loss"),
+            patience=early_cfg.get("patience", 10),
+            mode=early_cfg.get("mode", "min")
+        )
+        callbacks.append(early_stopping)
+        print(f"[INFO] 启用 EarlyStopping，监控指标: {early_cfg.get('monitor')}, 容忍轮数: {early_cfg.get('patience')}")
+    else:
+        print("[INFO] 未启用 EarlyStopping")
 
     # 添加 Logger：TensorBoard + CSV，统一 version 和路径
     logger_tb = TensorBoardLogger(save_dir=log_dir.parent, name="logs", version=version_name)
@@ -85,19 +93,12 @@ def main(options):
         devices=1,
         accelerator=device,
         max_epochs=config['train_cfgs']['epochs'],
-        log_every_n_steps=10,
-        callbacks=[checkpoint_callback, early_stopping],
+        log_every_n_steps=1,
+        callbacks=callbacks,
         logger=[logger_tb, logger_csv]
     )
 
-    ckpt_path = config['model_cfgs'].get('ckpt_path', None)
-    if ckpt_path:
-        print(f"==Loading checkpoint from {ckpt_path}==")
-        trainer.fit(model, ckpt_path=ckpt_path)
-    else:
-        print("==Starting training from scratch==")
-        trainer.fit(model)
-
+    trainer.fit(model)
 
     print("==Training finished.🍾 Take a break and have a cup of coffee. ☕️==")
 

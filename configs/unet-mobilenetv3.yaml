@@ -1,20 +1,20 @@
 SEED: 0
 
 model_cfgs:
-  ckpt_path: ~  # 断点续训时的ckpt路径，~表示从0开始训练
   model_name: unet
   model_args:
     encoder_name: mobilenetv3
-    in_channel_nb: 25
-    classes_nb: 2
+    in_channel_nb: 3
+    classes_nb: 3
 
 dataset_cfgs:
-  name: hsi_road
-  data_dir: F:\Data\hsi_road\hsi_road
+  name: BioSeg_RGB_datasets
+  data_dir: F:\Data\bio_colonization
   collection: nir
   classes:
     - background
-    - road
+    - bio_green
+    - bio_dark
 
 loss_cfgs:
   loss_name: ce
@@ -27,17 +27,22 @@ loss_cfgs:
 
 train_cfgs:
   optimizer: adam               # 可选项：adam / adamw / sgd
-  lr_rate: 0.01
+  lr_rate: 0.001
   lr_scheduler: step             # 可选项：step / multistep / cosine
   lr_scheduler_step: 10
   lr_scheduler_gamma: 0.1
   lr_scheduler_milestones: [ 30, 60 ]  # 如果用 multistep
   lr_scheduler_tmax: 50              # 如果用 cosine
   batch_size: 4
-  epochs: 7
-  save_cm_interval: 5
+  epochs: 50
+  save_cm_interval: 4
+  early_stopping:
+    enabled: True        # 是否启用 EarlyStopping
+    monitor: val_loss    # 监控的指标
+    patience: 10         # 容忍轮数
+    mode: min            # 优化方向（min 或 max）
 
 plot_cfgs:
   save_last_epoch_result: True
-  plot_classification_curve: True
-  max_points: 100000  # 最多保存的像素点数
+  plot_classification_curve: False
+  max_points: 1000000  # 最多保存的像素点数

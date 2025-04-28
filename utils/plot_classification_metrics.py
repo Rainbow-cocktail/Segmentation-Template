@@ -110,3 +110,33 @@ def plot_multiclass_metrics(y_true, y_pred, class_names=None, exclude_class_0=Tr
         print(f"[Saved] F1 vs Threshold curve to {f1_path}")
     else:
         plt.show()
+
+
+def plot_loss_curve(train_loss_list, val_loss_list=None, save_path=None, title="Loss Curve"):
+    """
+    绘制训练和验证的 Loss 曲线
+
+    参数:
+    - train_loss_list: List[float]，每个 epoch 的训练 loss
+    - val_loss_list: List[float]，每个 epoch 的验证 loss（可选）
+    - save_path: str，保存路径
+    - title: str，图表标题
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(train_loss_list, label='Train Loss', linewidth=2)
+
+    if val_loss_list:
+        plt.plot(val_loss_list, label='Val Loss', linewidth=2)
+
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300)
+        print(f"[INFO] Loss 曲线已保存到: {save_path}")
+
+    plt.close()
